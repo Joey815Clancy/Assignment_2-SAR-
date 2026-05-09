@@ -1,0 +1,42 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Name: TF
+    - Class: rviz_default_plugins/LaserScan
+      Enabled: true
+      Name: LaserScan
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /scan
+      Size (Pixels): 3
+      Style: Flat Squares
+      Decay Time: 0
+      Color: 255; 255; 127
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Name: CameraImage
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /camera/image
+      Transport Hint: raw
+  Enabled: true
+  Global Options:
+    Fixed Frame: walle/base_link
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Interact
