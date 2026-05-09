@@ -11,7 +11,7 @@ from rclpy.executors import ExternalShutdownException
 class TravelTo(Node):
 
     def __init__(self):
-        super().__init__('odometry_publisher')
+        super().__init__('robot_travel')
 
         self.declare_parameter('goal_x', 0.0)
         self.declare_parameter('goal_y', 0.0)

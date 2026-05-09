@@ -20,6 +20,7 @@ setup(
     entry_points={
         'console_scripts': [
             'robot_travel = SAR_navigation.robot_travel:main',
+            'robot_perception = SAR_navigation.robot_perception:main',
         ],
     },
 )
