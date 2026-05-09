@@ -11,7 +11,7 @@ from sar_bt.behaviours.battery_check import BatteryCheck
 from sar_bt.behaviours.scan_dam import ScanDam
 from sar_bt.behaviours.publish_tf import PublishTF
 
-class MissionBT Node():
+class MissionBT(Node):
     def __init__(self):
 
         # Build tree
@@ -29,7 +29,7 @@ class MissionBT Node():
 
         self.timer = self.create_timer(0.1,self.tick)
 
-    def tick(self.tick)
+    def tick(self.tick):
         self.tree.tick()
 def main(args=None):
     rclpy.init(args=args)

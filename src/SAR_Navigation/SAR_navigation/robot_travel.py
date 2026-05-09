@@ -6,6 +6,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.executors import ExternalShutdownException
+from sar_msgs.msg import ObjectDetectionArray
 
 
 class TravelTo(Node):
@@ -13,17 +14,21 @@ class TravelTo(Node):
     def __init__(self):
         super().__init__('robot_travel')
 
-        self.declare_parameter('goal_x', 0.0)
-        self.declare_parameter('goal_y', 0.0)
+        #self.declare_parameter('goal_x', 0.0)
+        #self.declare_parameter('goal_y', 0.0)
 
-        self.goal_x = self.get_parameter('goal_x').value
-        self.goal_y = self.get_parameter('goal_y').value
+        #self.goal_x = self.get_parameter('goal_x').value
+        #self.goal_y = self.get_parameter('goal_y').value
+        self.declare_parameter('target', 'survivor')
+        self.target = self.get_parameter('target').value
 
         self.current_x = 0.0
         self.current_y = 0.0
         self.yaw = 0.0
+        self.distance = 0.0
 
-        self.sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+        self.sub_odom = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+        self.sub_obj_data = self.create_subscription(ObjectDetectionArray,'/detected_objects',self.object_callback,10)
         self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
 
     def _wrap_angle(self, a):
@@ -42,6 +47,13 @@ class TravelTo(Node):
         cosy = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
         self.yaw = math.atan2(siny, cosy)
 
+    def object_callback(self,msg):
+
+        for obj in msg.objects:
+            if obj.meaning == self.target and obj.detected:
+                self.goal_x = obj.x
+                self.goal_y = obj.y
+
         dx = self.goal_x - self.current_x
         dy = self.goal_y - self.current_y
 
@@ -49,7 +61,8 @@ class TravelTo(Node):
 
         angle_to_goal = math.atan2(dy, dx)
         angle_error = self._wrap_angle(angle_to_goal - self.yaw)
-
+        
+        ## To be includded in custom msg later ##
         stopping_distance = 0.1
 
         twist = Twist()
