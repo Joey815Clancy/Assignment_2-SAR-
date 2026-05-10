@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 
 import math
+import time
 import rclpy
 from rclpy.node import Node
+from rclpy.action import ActionServer
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
-from rclpy.executors import ExternalShutdownException
+from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from sar_msgs.msg import ObjectDetectionArray
+from sar_msgs.action import NavigateTo
 
 
 class TravelTo(Node):
@@ -14,21 +17,18 @@ class TravelTo(Node):
     def __init__(self):
         super().__init__('robot_travel')
 
-        #self.declare_parameter('goal_x', 0.0)
-        #self.declare_parameter('goal_y', 0.0)
-
-        #self.goal_x = self.get_parameter('goal_x').value
-        #self.goal_y = self.get_parameter('goal_y').value
-        self.declare_parameter('target', 'survivor')
-        self.target = self.get_parameter('target').value
-
+        self.goal_x = 0.0
+        self.goal_y = 0.0
         self.current_x = 0.0
         self.current_y = 0.0
         self.yaw = 0.0
-        self.distance = 0.0
+        self.target = ''
+        self.stopping_distance = 0.1
+
+        self.action_server = ActionServer(self, NavigateTo, 'navigate_to', self.execute_callback)
 
         self.sub_odom = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
-        self.sub_obj_data = self.create_subscription(ObjectDetectionArray,'/detected_objects',self.object_callback,10)
+        self.sub_obj_data = self.create_subscription(ObjectDetectionArray, '/detected_objects', self.object_callback, 10)
         self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
 
     def _wrap_angle(self, a):
@@ -47,43 +47,57 @@ class TravelTo(Node):
         cosy = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
         self.yaw = math.atan2(siny, cosy)
 
-    def object_callback(self,msg):
-
+    def object_callback(self, msg):
         for obj in msg.objects:
             if obj.meaning == self.target and obj.detected:
                 self.goal_x = obj.x
                 self.goal_y = obj.y
+                break
 
-        dx = self.goal_x - self.current_x
-        dy = self.goal_y - self.current_y
+    def execute_callback(self, goal_handle):
+        self.target = goal_handle.request.target
+        self.stopping_distance = goal_handle.request.stopping_distance
 
-        distance = math.sqrt(dx**2 + dy**2)
+        self.goal_x = None
+        self.goal_y = None
+        self.get_logger().info(f'Goal received: target={self.target}, stopping_distance={self.stopping_distance}')
 
-        angle_to_goal = math.atan2(dy, dx)
-        angle_error = self._wrap_angle(angle_to_goal - self.yaw)
-        
-        ## To be includded in custom msg later ##
-        stopping_distance = 0.1
+        while rclpy.ok():
+            if self.goal_x is None:
+                self.get_logger().info(f'Waiting for {self.target} position...')
+                time.sleep(0.1)
+                continue
 
-        twist = Twist()
+            self.get_logger().info(f'Navigating to {self.target} at ({self.goal_x:.2f}, {self.goal_y:.2f})')
 
-        if distance < stopping_distance:
-            self.get_logger().info('Goal reached')
-            self.pub.publish(twist)
-            return
+            dx = self.goal_x - self.current_x
+            dy = self.goal_y - self.current_y
 
-        if abs(angle_error) > 0.1:
-            self.get_logger().info(f'Turning to correct angle, error: {angle_error:.2f}')
-            twist.linear.x = 0.0
-            if angle_error > 0:
-                twist.angular.z = 0.5
+            distance = math.sqrt(dx**2 + dy**2)
+            angle_to_goal = math.atan2(dy, dx)
+            angle_error = self._wrap_angle(angle_to_goal - self.yaw)
+
+            feedback = NavigateTo.Feedback()
+            feedback.distance_remaining = distance
+            goal_handle.publish_feedback(feedback)
+
+            if distance < self.stopping_distance:
+                self.get_logger().info('Goal reached')
+                self.pub.publish(Twist())
+                goal_handle.succeed()
+                return NavigateTo.Result(success=True, message='Goal reached')
+
+            twist = Twist()
+
+            if abs(angle_error) > 0.1:
+                self.get_logger().info(f'Turning to correct angle, error: {angle_error:.2f}')
+                twist.angular.z = 0.8 if angle_error > 0 else -0.8
             else:
-                twist.angular.z = -0.5
-        else:
-            self.get_logger().info(f'Driving to goal, distance: {distance:.2f}')
-            twist.linear.x = 0.5
+                self.get_logger().info(f'Driving to goal, distance: {distance:.2f}')
+                twist.linear.x = 2
 
-        self.pub.publish(twist)
+            self.pub.publish(twist)
+            time.sleep(0.1)
 
 
 def main(args=None):
@@ -91,7 +105,9 @@ def main(args=None):
 
     try:
         node = TravelTo()
-        rclpy.spin(node)
+        executor = MultiThreadedExecutor()
+        executor.add_node(node)
+        executor.spin()
     except ExternalShutdownException:
         pass
 

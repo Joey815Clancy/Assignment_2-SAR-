@@ -1,0 +1,10 @@
+# Goal - what the BT sends
+string target
+float64 stopping_distance
+---
+# Result - what robot_travel sends back when done
+bool success
+string message
+---
+# Feedback - sent during navigation
+float64 distance_remaining

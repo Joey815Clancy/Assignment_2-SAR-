@@ -81,6 +81,26 @@
     <child link="caster_wheel"/>
     <origin xyz="0.55 0 0.25" rpy="0 0 0"/>
   </joint>
+<!-- REAR CASTER WHEEL -->
+  <link name="rear_caster_wheel">
+    <visual>
+      <geometry><sphere radius="0.25"/></geometry>
+      <material name="grey"><color rgba="0.4 0.4 0.4 1.0"/></material>
+    </visual>
+    <collision><geometry><sphere radius="0.25"/></geometry></collision>
+    <inertial>
+      <mass value="0.1"/>
+      <inertia ixx="0.0025" ixy="0.0" ixz="0.0"
+               iyy="0.0025" iyz="0.0"
+               izz="0.0025"/>
+    </inertial>
+  </link>
+<!-- REAR CASTER WHEEL JOINT -->
+  <joint name="rear_caster_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="rear_caster_wheel"/>
+    <origin xyz="-0.55 0 0.25" rpy="0 0 0"/>
+  </joint>
 <!-- CAMERA -->
   <link name="camera_link">
     <visual>
@@ -196,6 +216,9 @@
 
   <!-- Caster friction -->
   <gazebo reference="caster_wheel">
+    <mu1>0.0</mu1><mu2>0.0</mu2>
+  </gazebo>
+  <gazebo reference="rear_caster_wheel">
     <mu1>0.0</mu1><mu2>0.0</mu2>
   </gazebo>
 </robot>
